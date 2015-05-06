@@ -3,6 +3,7 @@
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <map>
 #include <cstdio>
 #include <string>
 #include <sstream>
@@ -14,6 +15,37 @@ boost::shared_ptr<tcp::socket> sock_b;
 boost::asio::streambuf buf_a;
 boost::asio::streambuf buf_b;
 
+double mean_value = 0;
+
+long long last_a = 0;
+long long last_b = 0;
+
+std::map<uint64_t, double> values;
+
+void update() {
+    while (!values.empty()) {
+
+    }
+}
+
+void insert(uint64_t t, double difference) {
+    mean_value = (mean_value * values.size() + difference) / (values.size() + 1);
+    values.insert(std::make_pair(t, difference));
+}
+
+void erase(uint64_t t, double difference) {
+    if (values.empty()) {
+        return;
+    }
+
+    mean_value = (mean_value * values.size() - difference) / (values.size() - 1);
+    values.erase(t);
+}
+
+
+
+
+
 template <typename F>
 void handle_read(const boost::system::error_code& ec, tcp::socket& sock, boost::asio::streambuf& buf, F f) {
     if (!ec) {
@@ -23,9 +55,14 @@ void handle_read(const boost::system::error_code& ec, tcp::socket& sock, boost::
         std::istringstream iss(line);
 
         char c;
-        long long t, v;
+        uint64_t t;
+        long long v;
         iss >> c >> t >> v;
         std::cout << c << " " << t << " " << v << std::endl;
+
+        insert(t, v);
+
+        std::cout << mean_value << " " << values.size() << std::endl;
     } else {
         // TODO: Handle disconnect
     }
@@ -40,6 +77,10 @@ void handle_read_a(const boost::system::error_code& ec) {
 void handle_read_b(const boost::system::error_code& ec) {
     handle_read(ec, *sock_b, buf_b, handle_read_b);
 }
+
+
+
+int interval = 0;
 
 int main(int argc, char* argv[]) {
     boost::asio::io_service io_service;
